@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chatroom</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0;padding:20px;background:#0b1020;color:#e6e8f0}
+    .card{background:#12193a;border:1px solid #223; border-radius:10px; padding:16px; margin-bottom:16px}
+    input,button{padding:8px 10px;border-radius:8px;border:1px solid #334;background:#0f1330;color:#e6e8f0}
+    button{cursor:pointer;background:#3b82f6;border-color:#3b82f6}
+    button:disabled{opacity:.6}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    .col{flex:1 1 280px}
+    #rooms{max-height:180px;overflow:auto}
+    #messages{height:320px;overflow:auto;background:#0f1330;border-radius:8px;padding:8px;border:1px solid #334}
+    .msg{padding:6px 8px;border-bottom:1px solid #223}
+    .muted{opacity:.7}
+  </style>
+</head>
+<body>
+  <h2>Chatroom 演示</h2>
+
+  <div class="card">
+    <div class="row">
+      <div class="col">
+        <h3>注册</h3>
+        <input id="reg-username" placeholder="用户名" />
+        <input id="reg-password" type="password" placeholder="密码" />
+        <button id="btn-register">注册</button>
+      </div>
+      <div class="col">
+        <h3>登录</h3>
+        <input id="login-username" placeholder="用户名" />
+        <input id="login-password" type="password" placeholder="密码" />
+        <button id="btn-login">登录</button>
+      </div>
+      <div class="col">
+        <h3>令牌</h3>
+        <div class="muted" style="word-break:break-all">Access: <span id="access"></span></div>
+        <div class="muted" style="word-break:break-all">Refresh: <span id="refresh"></span></div>
+        <button id="btn-refresh">刷新令牌</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div class="col">
+        <h3>房间</h3>
+        <div class="row">
+          <input id="room-name" placeholder="新房间名" />
+          <button id="btn-create-room">创建</button>
+          <button id="btn-list-rooms">刷新列表</button>
+        </div>
+        <div id="rooms"></div>
+      </div>
+      <div class="col">
+        <h3>消息（房间 <span id="current-room">-</span>，在线 <span id="room-online">0</span>）</h3>
+        <div id="messages"></div>
+        <div class="muted" id="typing" style="min-height:20px;margin-top:6px"></div>
+        <div class="row" style="margin-top:8px">
+          <input id="msg-input" class="col" placeholder="输入消息回车发送" />
+          <button id="btn-send">发送</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
