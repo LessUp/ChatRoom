@@ -2,14 +2,16 @@ package main
 
 import (
 	"chatroom/internal/config"
-	clog "chatroom/internal/log"
 	"chatroom/internal/db"
+	clog "chatroom/internal/log"
 	"chatroom/internal/server"
 	"chatroom/internal/ws"
+
 	"github.com/rs/zerolog/log"
 )
 
 func main() {
+	// main 函数负责加载配置、初始化日志、连接数据库并启动 Gin 服务。
 	cfg := config.Load()
 	clog.Init(cfg.Env)
 

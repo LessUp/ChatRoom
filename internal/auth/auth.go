@@ -86,6 +86,7 @@ func RevokeRefreshToken(db *gorm.DB, token string) error {
 	return db.Model(&models.RefreshToken{}).Where("token = ?", token).Update("revoked_at", &now).Error
 }
 
+// AuthMiddleware 校验 Bearer Token 并把用户信息塞进 Gin 上下文。
 func AuthMiddleware(cfg config.Config, db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authz := c.GetHeader("Authorization")
@@ -110,6 +111,7 @@ func AuthMiddleware(cfg config.Config, db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
+// GetUserID 用于在 handler 中快速取得当前登录用户 ID。
 func GetUserID(c *gin.Context) uint {
 	if v, ok := c.Get("userID"); ok {
 		if id, ok2 := v.(uint); ok2 {

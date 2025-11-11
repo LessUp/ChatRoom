@@ -7,21 +7,24 @@ import (
 
 	"chatroom/internal/auth"
 	"chatroom/internal/config"
-	"chatroom/internal/models"
 	"chatroom/internal/metrics"
+	"chatroom/internal/models"
 	"chatroom/internal/mw"
 	"chatroom/internal/ws"
+
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/time/rate"
 	"gorm.io/gorm"
 )
 
+// SetupRouter 统一初始化 Gin 中间件、REST API 以及 WebSocket 端点。
 func SetupRouter(cfg config.Config, db *gorm.DB, hub *ws.Hub) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(metrics.GinMiddleware())
-	r.Use(mw.RateLimit(rate.Every(time.Second/20), 40)) // ~20 rps per ip+path, burst 40
+	// 控制单个 IP+路由的速率，避免教学环境被刷爆。
+	r.Use(mw.RateLimit(rate.Every(time.Second/20), 40))
 
 	r.GET("/healthz", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
@@ -94,6 +97,7 @@ func SetupRouter(cfg config.Config, db *gorm.DB, hub *ws.Hub) *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"access_token": at, "refresh_token": newRT})
 	})
 
+	// 需要 Bearer Token 的业务接口。
 	authed := api.Group("")
 	authed.Use(auth.AuthMiddleware(cfg, db))
 

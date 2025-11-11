@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Init 根据环境设置 Zerolog 输出格式，开发环境使用更易读的控制台模式。
 func Init(env string) {
 	zerolog.TimeFieldFormat = time.RFC3339
 	if env == "dev" {

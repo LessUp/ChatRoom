@@ -32,6 +32,7 @@ func init() {
 	prometheus.MustRegister(WsConnections, WsMessagesTotal, HttpRequestsTotal, HttpRequestDuration)
 }
 
+// GinMiddleware 统计基础请求指标，供 Prometheus 拉取。
 func GinMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()

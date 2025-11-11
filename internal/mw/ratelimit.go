@@ -53,7 +53,7 @@ func (rl *RL) gc() {
 	}
 }
 
-// RateLimit returns Gin middleware applying per-IP+path token bucket
+// RateLimit 返回一个基于 IP+路径的令牌桶限速中间件。
 func RateLimit(r rate.Limit, burst int) gin.HandlerFunc {
 	rl := NewRateLimiter(r, burst, 2*time.Minute)
 	go rl.gc()

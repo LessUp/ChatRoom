@@ -24,6 +24,7 @@ type Client struct {
 	uname  string
 }
 
+// upgrader 将 HTTP 请求升级为 WebSocket 连接（教学场景放宽跨域校验）。
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
@@ -44,6 +45,7 @@ type OutboundMessage struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// Serve 返回 Gin 处理函数，用于校验用户、加入房间并启动读写循环。
 func Serve(h *Hub, db *gorm.DB, cfg config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		roomIDStr := c.Query("room_id")
@@ -58,7 +60,7 @@ func Serve(h *Hub, db *gorm.DB, cfg config.Config) gin.HandlerFunc {
 			return
 		}
 
-		// Token via Authorization header or token query param for WS
+		// 兼容 Authorization 头与 token 查询参数两种传递方式，方便调试。
 		authz := c.GetHeader("Authorization")
 		token := c.Query("token")
 		if token == "" && len(authz) > 7 && (authz[:7] == "Bearer " || authz[:7] == "bearer ") {
@@ -92,6 +94,7 @@ func Serve(h *Hub, db *gorm.DB, cfg config.Config) gin.HandlerFunc {
 	}
 }
 
+// readPump 负责读取客户端信息、校验输入并推送到房间广播。
 func (c *Client) readPump() {
 	defer func() {
 		c.room.unregister <- c
@@ -112,7 +115,7 @@ func (c *Client) readPump() {
 		if err := json.Unmarshal(data, &in); err != nil || in.Content == "" && in.Type != "typing" {
 			continue
 		}
-		// typing signal (not persisted)
+		// 输入法提示只做广播，不入库。
 		if in.Type == "typing" {
 			evt := map[string]interface{}{"type": "typing", "room_id": c.room.roomID, "user_id": c.userID, "username": c.uname, "is_typing": in.IsTyping}
 			if b, err := json.Marshal(evt); err == nil {
@@ -131,6 +134,7 @@ func (c *Client) readPump() {
 	}
 }
 
+// writePump 周期性发送服务端数据与心跳，防止浏览器断线。
 func (c *Client) writePump() {
 	ticker := time.NewTicker(30 * time.Second)
 	defer func() {

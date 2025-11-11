@@ -5,6 +5,7 @@ import (
 	"strconv"
 )
 
+// Config 描述启动服务所需的关键参数。
 type Config struct {
 	Port                    string
 	DatabaseDSN             string
@@ -22,6 +23,7 @@ func getenv(key, def string) string {
 	return v
 }
 
+// Load 从环境变量读取配置，并为教学场景准备合理的默认值。
 func Load() Config {
 	port := getenv("APP_PORT", "8080")
 	dsn := getenv("DATABASE_DSN", "host=localhost user=postgres password=postgres dbname=chatroom port=5432 sslmode=disable TimeZone=UTC")
