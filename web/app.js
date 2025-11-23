@@ -2,6 +2,7 @@
   const $ = (id) => document.getElementById(id);
   let accessToken = '';
   let refreshToken = '';
+  let currentUser = null;
   let currentRoomId = null;
   let ws = null;
   let reconnectAttempts = 0;
@@ -12,11 +13,41 @@
   let earliestMsgId = null;
   let loadingHistory = false;
 
+  function setCurrentUser(user) {
+    currentUser = user;
+    if (user) {
+      localStorage.setItem('chat_user', JSON.stringify(user));
+      updateAuthUI(true);
+    } else {
+      localStorage.removeItem('chat_user');
+      updateAuthUI(false);
+    }
+  }
+
+  function updateAuthUI(isLoggedIn) {
+    const authScreen = $("auth-screen");
+    const appScreen = $("app-screen");
+    const usernameDisplay = $("current-username");
+    
+    if (authScreen && appScreen) {
+        if (isLoggedIn) {
+            authScreen.classList.add('hidden');
+            appScreen.classList.remove('hidden');
+            if (usernameDisplay && currentUser) {
+                usernameDisplay.textContent = currentUser.username;
+            }
+        } else {
+            authScreen.classList.remove('hidden');
+            appScreen.classList.add('hidden');
+        }
+    }
+  }
+
   function setTokens(a, r) {
     if (a) accessToken = a;
     if (r) refreshToken = r;
-    $("access").textContent = accessToken;
-    $("refresh").textContent = refreshToken;
+    // $("access").textContent = accessToken; // Removing debug UI
+    // $("refresh").textContent = refreshToken; // Removing debug UI
     try {
       localStorage.setItem('chat_access', accessToken || '');
       localStorage.setItem('chat_refresh', refreshToken || '');
@@ -53,15 +84,18 @@
   }
 
   function renderRooms(rooms) {
-    const wrap = $("rooms");
+    const wrap = $("rooms-list");
+    if (!wrap) return;
     wrap.innerHTML = '';
     rooms.forEach(r => {
-      const btn = document.createElement('button');
-      const online = r.online != null ? ` · 在线${r.online}` : '';
-      btn.textContent = `进入: ${r.name} (#${r.id})${online}`;
-      btn.style.margin = '4px';
-      btn.onclick = () => joinRoom(r.id, r.name, r.online);
-      wrap.appendChild(btn);
+      const div = document.createElement('div');
+      div.className = `p-3 mb-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-700 ${currentRoomId === r.id ? 'bg-blue-600' : 'bg-gray-800'}`;
+      div.innerHTML = `
+        <div class="font-medium">${r.name}</div>
+        <div class="text-xs text-gray-400">ID: ${r.id} · 在线: ${r.online}</div>
+      `;
+      div.onclick = () => joinRoom(r.id, r.name, r.online);
+      wrap.appendChild(div);
     });
   }
 
@@ -71,25 +105,40 @@
 
   function appendMsg(m, { prepend = false } = {}) {
     const box = $("messages");
-    const div = document.createElement('div');
-    div.className = 'msg';
+    if (!box) return;
+    
     const type = m.type || m.Type || 'message';
+    const div = document.createElement('div');
+    
     if (type === 'message') {
-      const ts = new Date(m.created_at || m.CreatedAt || m.createdAt || Date.now()).toLocaleTimeString();
       const user = m.username || m.Username || m.user || m.User || m.user_id || m.UserID;
       const content = m.content || m.Content || '';
-      div.textContent = `[${ts}] ${user}: ${content}`;
+      const ts = new Date(m.created_at || m.CreatedAt || m.createdAt || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      const isMe = currentUser && user === currentUser.username;
+      
+      div.className = `flex flex-col mb-4 ${isMe ? 'items-end' : 'items-start'}`;
+      div.innerHTML = `
+        <div class="flex items-baseline space-x-2 ${isMe ? 'flex-row-reverse space-x-reverse' : ''}">
+          <span class="text-xs text-gray-400">${user}</span>
+          <span class="text-xs text-gray-500">${ts}</span>
+        </div>
+        <div class="mt-1 px-4 py-2 rounded-2xl max-w-[85%] break-words ${isMe ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-gray-700 text-gray-100 rounded-tl-none'}">
+          ${content}
+        </div>
+      `;
     } else if (type === 'join' || type === 'leave') {
       const user = m.username || m.Username || m.user || m.User || m.user_id || m.UserID;
-      div.innerHTML = `<span class="muted">— ${user} ${type === 'join' ? '加入' : '离开'}，在线 ${m.online ?? '-'} —</span>`;
-      // 同步在线人数
+      div.className = 'flex justify-center my-2';
+      div.innerHTML = `<span class="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded-full">${user} ${type === 'join' ? '加入' : '离开'}了房间</span>`;
+      
       if (typeof m.online === 'number') {
-        $("room-online").textContent = m.online;
+        const el = $("room-online");
+        if (el) el.textContent = m.online;
       }
-    } else if (type === 'typing') {
-      // typing 单独处理，不加入消息流
+    } else {
       return;
     }
+
     if (prepend) {
       box.insertBefore(div, box.firstChild);
     } else {
@@ -110,10 +159,18 @@
 
   async function joinRoom(id, name, online) {
     currentRoomId = id;
-    $("current-room").textContent = `${name} (#${id})`;
+    $("current-room-name").textContent = name;
+    $("welcome-message").classList.add('hidden');
+    $("chat-area").classList.remove('hidden');
+    
+    // Update room list highlighting
+    loadRooms(); 
+
     try { localStorage.setItem('chat_last_room', String(id)); } catch {}
     $("messages").innerHTML = '';
-    if (typeof online === 'number') $("room-online").textContent = String(online); else $("room-online").textContent = '0';
+    const onlineEl = $("room-online");
+    if (onlineEl) onlineEl.textContent = typeof online === 'number' ? String(online) : '0';
+    
     earliestMsgId = null;
     try {
       const data = await api(`/api/v1/rooms/${id}/messages?limit=50`, 'GET', null, true);
@@ -179,10 +236,20 @@
     try {
       const data = await api('/api/v1/auth/login', 'POST', { username, password });
       setTokens(data.access_token, data.refresh_token);
+      setCurrentUser(data.user);
       await loadRooms();
     } catch (e) {
       alert('登录失败');
     }
+  }
+
+  function logout() {
+    setTokens('', '');
+    setCurrentUser(null);
+    if (ws) { try { ws.close(); } catch {} ws = null; }
+    currentRoomId = null;
+    localStorage.removeItem('chat_last_room');
+    window.location.reload();
   }
 
   async function refresh() {
@@ -264,10 +331,13 @@
 
   $("btn-register").onclick = register;
   $("btn-login").onclick = login;
-  $("btn-refresh").onclick = refresh;
+  // $("btn-refresh").onclick = refresh; // Hidden in UI
   $("btn-create-room").onclick = createRoom;
-  $("btn-list-rooms").onclick = loadRooms;
+  // $("btn-list-rooms").onclick = loadRooms; // Auto refresh
   $("btn-send").onclick = sendMessage;
+  const btnLogout = $("btn-logout");
+  if (btnLogout) btnLogout.onclick = logout;
+  
   $("msg-input").addEventListener('keydown', (e) => {
     if (e.key === 'Enter') sendMessage();
   });
@@ -285,12 +355,19 @@
   try {
     const a = localStorage.getItem('chat_access');
     const r = localStorage.getItem('chat_refresh');
-    if (a || r) setTokens(a || '', r || '');
-    loadRooms();
-    const last = localStorage.getItem('chat_last_room');
-    if (last) {
-      // 延迟以等待 rooms 渲染完毕
-      setTimeout(() => joinRoom(parseInt(last, 10), `#${last}`), 200);
+    const u = localStorage.getItem('chat_user');
+    if (a || r) {
+        setTokens(a || '', r || '');
+        if (u) setCurrentUser(JSON.parse(u));
+        else updateAuthUI(true); // Fallback if user data missing
+        
+        loadRooms();
+        const last = localStorage.getItem('chat_last_room');
+        if (last) {
+        setTimeout(() => joinRoom(parseInt(last, 10), '...'), 500);
+        }
+    } else {
+        updateAuthUI(false);
     }
   } catch {}
 })();

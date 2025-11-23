@@ -1,67 +1,127 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="h-full">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chatroom</title>
+  <title>ChatRoom</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0;padding:20px;background:#0b1020;color:#e6e8f0}
-    .card{background:#12193a;border:1px solid #223; border-radius:10px; padding:16px; margin-bottom:16px}
-    input,button{padding:8px 10px;border-radius:8px;border:1px solid #334;background:#0f1330;color:#e6e8f0}
-    button{cursor:pointer;background:#3b82f6;border-color:#3b82f6}
-    button:disabled{opacity:.6}
-    .row{display:flex;gap:8px;flex-wrap:wrap}
-    .col{flex:1 1 280px}
-    #rooms{max-height:180px;overflow:auto}
-    #messages{height:320px;overflow:auto;background:#0f1330;border-radius:8px;padding:8px;border:1px solid #334}
-    .msg{padding:6px 8px;border-bottom:1px solid #223}
-    .muted{opacity:.7}
+    body { font-family: 'Inter', sans-serif; }
+    /* Custom scrollbar for dark theme */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #1f2937; }
+    ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
   </style>
 </head>
-<body>
-  <h2>Chatroom 演示</h2>
+<body class="h-full bg-gray-900 text-gray-100 overflow-hidden">
 
-  <div class="card">
-    <div class="row">
-      <div class="col">
-        <h3>注册</h3>
-        <input id="reg-username" placeholder="用户名" />
-        <input id="reg-password" type="password" placeholder="密码" />
-        <button id="btn-register">注册</button>
+  <!-- Auth Screen -->
+  <div id="auth-screen" class="h-full flex items-center justify-center p-4 hidden">
+    <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-700">
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-blue-500">ChatRoom</h1>
+        <p class="text-gray-400 mt-2">加入实时聊天室</p>
       </div>
-      <div class="col">
-        <h3>登录</h3>
-        <input id="login-username" placeholder="用户名" />
-        <input id="login-password" type="password" placeholder="密码" />
-        <button id="btn-login">登录</button>
-      </div>
-      <div class="col">
-        <h3>令牌</h3>
-        <div class="muted" style="word-break:break-all">Access: <span id="access"></span></div>
-        <div class="muted" style="word-break:break-all">Refresh: <span id="refresh"></span></div>
-        <button id="btn-refresh">刷新令牌</button>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-400 mb-1">用户名</label>
+          <input id="login-username" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="输入用户名">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-400 mb-1">密码</label>
+          <input id="login-password" type="password" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="输入密码">
+        </div>
+        
+        <button id="btn-login" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+          登录
+        </button>
+        
+        <div class="relative my-6">
+            <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-700"></div></div>
+            <div class="relative flex justify-center text-sm"><span class="px-2 bg-gray-800 text-gray-500">或者</span></div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+             <input id="reg-username" class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="新用户名">
+             <input id="reg-password" type="password" class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="新密码">
+        </div>
+        <button id="btn-register" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-medium py-2 px-4 rounded-lg transition-colors text-sm">
+          注册新账号
+        </button>
       </div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="row">
-      <div class="col">
-        <h3>房间</h3>
-        <div class="row">
-          <input id="room-name" placeholder="新房间名" />
-          <button id="btn-create-room">创建</button>
-          <button id="btn-list-rooms">刷新列表</button>
+  <!-- App Screen -->
+  <div id="app-screen" class="h-full flex hidden">
+    <!-- Sidebar -->
+    <div class="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
+      <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center font-bold text-sm">
+                <span id="current-username-avatar">ME</span>
+            </div>
+            <span id="current-username" class="font-medium truncate max-w-[100px]">User</span>
         </div>
-        <div id="rooms"></div>
+        <button id="btn-logout" class="text-xs text-gray-400 hover:text-white">退出</button>
       </div>
-      <div class="col">
-        <h3>消息（房间 <span id="current-room">-</span>，在线 <span id="room-online">0</span>）</h3>
-        <div id="messages"></div>
-        <div class="muted" id="typing" style="min-height:20px;margin-top:6px"></div>
-        <div class="row" style="margin-top:8px">
-          <input id="msg-input" class="col" placeholder="输入消息回车发送" />
-          <button id="btn-send">发送</button>
+
+      <div class="p-4">
+        <div class="flex space-x-2 mb-4">
+          <input id="room-name" class="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="新房间名">
+          <button id="btn-create-room" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">创建</button>
+        </div>
+        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">房间列表</h3>
+        <div id="rooms-list" class="space-y-1 overflow-y-auto" style="max-height: calc(100vh - 180px);">
+          <!-- Room items will be injected here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Chat Area -->
+    <div class="flex-1 flex flex-col bg-gray-900">
+      <!-- Empty State -->
+      <div id="welcome-message" class="flex-1 flex items-center justify-center text-gray-500">
+        <div class="text-center">
+            <h2 class="text-xl font-semibold mb-2">欢迎回来!</h2>
+            <p>请从左侧选择一个房间开始聊天</p>
+        </div>
+      </div>
+
+      <!-- Chat Room (Hidden initially) -->
+      <div id="chat-area" class="flex-1 flex flex-col hidden h-full">
+        <!-- Header -->
+        <div class="h-16 border-b border-gray-700 flex items-center px-6 bg-gray-800 justify-between">
+          <div>
+            <h2 id="current-room-name" class="text-lg font-semibold">Room Name</h2>
+            <div class="text-xs text-green-500 flex items-center">
+              <span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+              <span id="room-online">0</span> 在线
+            </div>
+          </div>
+        </div>
+
+        <!-- Messages -->
+        <div id="messages" class="flex-1 overflow-y-auto p-6 space-y-4">
+           <!-- Messages will be injected here -->
+        </div>
+
+        <!-- Typing Indicator -->
+        <div class="px-6 h-6">
+            <span id="typing" class="text-xs text-gray-500 italic transition-opacity duration-300"></span>
+        </div>
+
+        <!-- Input -->
+        <div class="p-4 bg-gray-800 border-t border-gray-700">
+          <div class="flex space-x-4">
+            <input id="msg-input" class="flex-1 bg-gray-700 border-0 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-600 focus:outline-none" placeholder="输入消息...">
+            <button id="btn-send" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center">
+              发送
+            </button>
+          </div>
         </div>
       </div>
     </div>
