@@ -112,25 +112,66 @@ func (c *Client) readPump() {
 			break
 		}
 		var in InboundMessage
-		if err := json.Unmarshal(data, &in); err != nil || in.Content == "" && in.Type != "typing" {
+		if err := json.Unmarshal(data, &in); err != nil {
 			continue
 		}
-		// 输入法提示只做广播，不入库。
-		if in.Type == "typing" {
+
+		switch in.Type {
+		case "ping":
+			// 响应客户端心跳检测
+			pong := map[string]string{"type": "pong"}
+			if b, err := json.Marshal(pong); err == nil {
+				select {
+				case c.send <- b:
+				default:
+				}
+			}
+
+		case "typing":
+			// 输入法提示只做广播，不入库
 			evt := map[string]interface{}{"type": "typing", "room_id": c.room.roomID, "user_id": c.userID, "username": c.uname, "is_typing": in.IsTyping}
 			if b, err := json.Marshal(evt); err == nil {
 				c.room.broadcast <- b
 			}
-			continue
+
+		case "message":
+			if in.Content == "" {
+				continue
+			}
+			// 消息长度限制
+			if len(in.Content) > 2000 {
+				errMsg := map[string]string{"type": "error", "content": "消息长度不能超过2000字符"}
+				if b, err := json.Marshal(errMsg); err == nil {
+					select {
+					case c.send <- b:
+					default:
+					}
+				}
+				continue
+			}
+			msg := models.Message{RoomID: c.room.roomID, UserID: c.userID, Content: in.Content}
+			if err := c.db.Create(&msg).Error; err != nil {
+				continue
+			}
+			out := OutboundMessage{Type: "message", ID: msg.ID, RoomID: msg.RoomID, UserID: msg.UserID, Username: c.uname, Content: msg.Content, CreatedAt: msg.CreatedAt}
+			b, _ := json.Marshal(out)
+			metrics.WsMessagesTotal.Inc()
+			c.room.broadcast <- b
+
+		default:
+			// 向后兼容：无type时当作message处理
+			if in.Content == "" {
+				continue
+			}
+			msg := models.Message{RoomID: c.room.roomID, UserID: c.userID, Content: in.Content}
+			if err := c.db.Create(&msg).Error; err != nil {
+				continue
+			}
+			out := OutboundMessage{Type: "message", ID: msg.ID, RoomID: msg.RoomID, UserID: msg.UserID, Username: c.uname, Content: msg.Content, CreatedAt: msg.CreatedAt}
+			b, _ := json.Marshal(out)
+			metrics.WsMessagesTotal.Inc()
+			c.room.broadcast <- b
 		}
-		msg := models.Message{RoomID: c.room.roomID, UserID: c.userID, Content: in.Content}
-		if err := c.db.Create(&msg).Error; err != nil {
-			continue
-		}
-		out := OutboundMessage{Type: "message", ID: msg.ID, RoomID: msg.RoomID, UserID: msg.UserID, Username: c.uname, Content: msg.Content, CreatedAt: msg.CreatedAt}
-		b, _ := json.Marshal(out)
-		metrics.WsMessagesTotal.Inc()
-		c.room.broadcast <- b
 	}
 }
 

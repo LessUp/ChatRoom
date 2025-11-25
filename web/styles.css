@@ -1,0 +1,210 @@
+/* ChatRoom - Premium UI Styles */
+
+body { font-family: 'Inter', system-ui, sans-serif; }
+
+/* Premium scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.5); }
+
+/* Glass morphism effect */
+.glass { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.glass-dark { background: rgba(15, 23, 42, 0.85); }
+
+/* Message bubbles */
+.msg-own { 
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border-radius: 18px 18px 4px 18px;
+}
+.msg-other { 
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+  border-radius: 18px 18px 18px 4px;
+}
+
+/* Gradient text */
+.gradient-text { 
+  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%); 
+  -webkit-background-clip: text; 
+  -webkit-text-fill-color: transparent; 
+  background-clip: text; 
+}
+
+/* Input glow effect */
+.input-glow:focus { 
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2), 0 0 20px rgba(59, 130, 246, 0.1); 
+}
+
+/* Button shine effect */
+.btn-shine { position: relative; overflow: hidden; }
+.btn-shine::before { 
+  content: ''; 
+  position: absolute; 
+  top: 0; 
+  left: -100%; 
+  width: 100%; 
+  height: 100%; 
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); 
+  transition: left 0.5s; 
+}
+.btn-shine:hover::before { left: 100%; }
+
+/* Status indicator pulse */
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+}
+.status-online { animation: status-pulse 2s ease-in-out infinite; }
+
+/* Typing dots animation */
+.typing-dot { animation: typing 1.4s ease-in-out infinite; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+
+/* Room item hover */
+.room-item { transition: all 0.2s ease; }
+.room-item:hover { transform: translateX(4px); }
+.room-item.active { 
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.15) 0%, transparent 100%);
+  border-left: 3px solid #3b82f6;
+}
+
+/* Message appear animation */
+.msg-appear { animation: slide-up 0.3s ease-out; }
+
+/* Avatar with ring */
+.avatar-ring { box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5); }
+
+/* Emoji button hover */
+.emoji-btn { transition: transform 0.15s ease; }
+.emoji-btn:hover { transform: scale(1.2); }
+
+/* Reaction badge */
+.reaction-badge { 
+  transition: all 0.15s ease; 
+  cursor: pointer;
+}
+.reaction-badge:hover { transform: scale(1.1); }
+
+/* Connection status */
+@keyframes connection-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.connection-pulse { animation: connection-pulse 1.5s ease-in-out infinite; }
+
+/* Toast notifications */
+.toast-enter { transform: translateX(100%); opacity: 0; }
+.toast-show { transform: translateX(0); opacity: 1; }
+.toast-exit { transform: translateX(100%); opacity: 0; }
+
+/* Search highlight */
+.search-highlight { 
+  background: rgba(251, 191, 36, 0.3); 
+  border-radius: 2px; 
+  padding: 0 2px; 
+}
+
+/* Message status icons */
+.msg-status { opacity: 0.6; }
+.msg-status.sent { color: #94a3b8; }
+.msg-status.delivered { color: #60a5fa; }
+.msg-status.read { color: #22c55e; }
+
+/* Unread badge */
+.unread-badge {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+/* File attachment preview */
+.file-preview {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px dashed rgba(71, 85, 105, 0.5);
+  border-radius: 12px;
+}
+
+/* Online users list */
+.online-user {
+  transition: all 0.2s ease;
+}
+.online-user:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+/* Modal overlay */
+.modal-overlay {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+/* Settings panel */
+.settings-item {
+  transition: background 0.2s ease;
+}
+.settings-item:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+/* Mention highlight in message */
+.mention {
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.15);
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* Code block in message */
+.code-block {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  font-family: 'Monaco', 'Consolas', monospace;
+  font-size: 13px;
+  overflow-x: auto;
+}
+
+/* Link preview card */
+.link-preview {
+  background: rgba(30, 41, 59, 0.6);
+  border-left: 3px solid #3b82f6;
+  border-radius: 0 8px 8px 0;
+}
+
+/* Reply quote */
+.reply-quote {
+  border-left: 2px solid #6366f1;
+  padding-left: 8px;
+  margin-bottom: 4px;
+  opacity: 0.7;
+  font-size: 12px;
+}
+
+/* Message actions menu */
+.msg-actions {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.msg-wrapper:hover .msg-actions {
+  opacity: 1;
+}
+
+/* Smooth transitions */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Focus visible for accessibility */
+:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Dark scrollbar for Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
+}
