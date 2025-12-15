@@ -39,4 +39,14 @@
 - `frontend/src/screens/AuthScreen.tsx`
 - `frontend/src/toast.tsx`
 
+### 测试（Go）追加
+
+- `internal/auth/auth_test.go`
+- `internal/ws/hub_test.go`
+- `internal/server/router_test.go`
+
+## 最小回归
+
+- `go test ./...`
+
 > 后续变更会在此文件持续补充。
