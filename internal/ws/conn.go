@@ -3,7 +3,10 @@ package ws
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"chatroom/internal/auth"
@@ -12,6 +15,7 @@ import (
 	"chatroom/internal/metrics"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -26,7 +30,33 @@ type Client struct {
 
 // upgrader 将 HTTP 请求升级为 WebSocket 连接（教学场景放宽跨域校验）。
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin: checkOrigin,
+}
+
+var (
+	upgraderOnce   sync.Once
+	allowAllOrigin bool
+)
+
+func initUpgrader(cfg config.Config) {
+	upgraderOnce.Do(func() {
+		allowAllOrigin = cfg.Env == "dev"
+	})
+}
+
+func checkOrigin(r *http.Request) bool {
+	if allowAllOrigin {
+		return true
+	}
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return false
+	}
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(u.Host, r.Host)
 }
 
 type InboundMessage struct {
@@ -47,6 +77,7 @@ type OutboundMessage struct {
 
 // Serve 返回 Gin 处理函数，用于校验用户、加入房间并启动读写循环。
 func Serve(h *Hub, db *gorm.DB, cfg config.Config) gin.HandlerFunc {
+	initUpgrader(cfg)
 	return func(c *gin.Context) {
 		roomIDStr := c.Query("room_id")
 		rid64, err := strconv.ParseUint(roomIDStr, 10, 64)
@@ -83,6 +114,7 @@ func Serve(h *Hub, db *gorm.DB, cfg config.Config) gin.HandlerFunc {
 
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
+			log.Error().Err(err).Uint64("room_id", rid64).Str("remote", c.Request.RemoteAddr).Msg("ws upgrade")
 			return
 		}
 		rh := h.GetRoom(uint(rid64))
@@ -151,6 +183,14 @@ func (c *Client) readPump() {
 			}
 			msg := models.Message{RoomID: c.room.roomID, UserID: c.userID, Content: in.Content}
 			if err := c.db.Create(&msg).Error; err != nil {
+				log.Error().Err(err).Uint("room_id", c.room.roomID).Uint("user_id", c.userID).Msg("ws persist message")
+				errMsg := map[string]string{"type": "error", "content": "消息发送失败"}
+				if b, err := json.Marshal(errMsg); err == nil {
+					select {
+					case c.send <- b:
+					default:
+					}
+				}
 				continue
 			}
 			out := OutboundMessage{Type: "message", ID: msg.ID, RoomID: msg.RoomID, UserID: msg.UserID, Username: c.uname, Content: msg.Content, CreatedAt: msg.CreatedAt}
@@ -163,8 +203,26 @@ func (c *Client) readPump() {
 			if in.Content == "" {
 				continue
 			}
+			if len(in.Content) > 2000 {
+				errMsg := map[string]string{"type": "error", "content": "消息长度不能超过2000字符"}
+				if b, err := json.Marshal(errMsg); err == nil {
+					select {
+					case c.send <- b:
+					default:
+					}
+				}
+				continue
+			}
 			msg := models.Message{RoomID: c.room.roomID, UserID: c.userID, Content: in.Content}
 			if err := c.db.Create(&msg).Error; err != nil {
+				log.Error().Err(err).Uint("room_id", c.room.roomID).Uint("user_id", c.userID).Msg("ws persist message")
+				errMsg := map[string]string{"type": "error", "content": "消息发送失败"}
+				if b, err := json.Marshal(errMsg); err == nil {
+					select {
+					case c.send <- b:
+					default:
+					}
+				}
 				continue
 			}
 			out := OutboundMessage{Type: "message", ID: msg.ID, RoomID: msg.RoomID, UserID: msg.UserID, Username: c.uname, Content: msg.Content, CreatedAt: msg.CreatedAt}

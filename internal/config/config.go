@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"strconv"
 )
@@ -31,8 +32,14 @@ func Load() Config {
 	env := getenv("APP_ENV", "dev")
 	accessTTLStr := getenv("ACCESS_TOKEN_TTL_MINUTES", "15")
 	refreshTTLDaysStr := getenv("REFRESH_TOKEN_TTL_DAYS", "7")
-	accessTTL, _ := strconv.Atoi(accessTTLStr)
-	refreshTTL, _ := strconv.Atoi(refreshTTLDaysStr)
+	accessTTL, err := strconv.Atoi(accessTTLStr)
+	if err != nil || accessTTL <= 0 {
+		accessTTL = 15
+	}
+	refreshTTL, err := strconv.Atoi(refreshTTLDaysStr)
+	if err != nil || refreshTTL <= 0 {
+		refreshTTL = 7
+	}
 	return Config{
 		Port:                  port,
 		DatabaseDSN:           dsn,
@@ -41,4 +48,17 @@ func Load() Config {
 		AccessTokenTTLMinutes: accessTTL,
 		RefreshTokenTTLDays:   refreshTTL,
 	}
+}
+
+func Validate(cfg Config) error {
+	if cfg.Port == "" {
+		return errors.New("APP_PORT must not be empty")
+	}
+	if cfg.DatabaseDSN == "" {
+		return errors.New("DATABASE_DSN must not be empty")
+	}
+	if cfg.Env != "dev" && cfg.JWTSecret == "dev-secret-change-me" {
+		return errors.New("JWT_SECRET is using the default value")
+	}
+	return nil
 }

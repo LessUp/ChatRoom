@@ -14,6 +14,9 @@ func main() {
 	// main 函数负责加载配置、初始化日志、连接数据库并启动 Gin 服务。
 	cfg := config.Load()
 	clog.Init(cfg.Env)
+	if err := config.Validate(cfg); err != nil {
+		log.Fatal().Err(err).Msg("config validate")
+	}
 
 	gdb, err := db.Connect(cfg.DatabaseDSN)
 	if err != nil {
