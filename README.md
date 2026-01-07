@@ -1,118 +1,169 @@
 # ChatRoom
 
-一套教学用的实时聊天室示例，后端使用 Gin + GORM + Zerolog，前端为轻量原生 JS，数据层采用 Docker 化的 Postgres。浏览器先通过 REST API 完成注册/登录，再使用 WebSocket 连接房间 Hub 进行消息广播与历史消息持久化。
+[![CI](https://github.com/your-username/chatroom/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/chatroom/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/your-username/chatroom)](https://goreportcard.com/report/github.com/your-username/chatroom)
+[![codecov](https://codecov.io/gh/your-username/chatroom/branch/main/graph/badge.svg)](https://codecov.io/gh/your-username/chatroom)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Go Version](https://img.shields.io/badge/Go-1.24-blue.svg)](https://golang.org/)
 
-## 功能特性
+一套实时聊天室应用，后端使用 Go (Gin + GORM + WebSocket)，前端使用 React + TypeScript，数据层采用 PostgreSQL。
 
-- 支持用户注册与登录
-- JWT access token + refresh token 鉴权
-- 聊天房间创建、加入与在线人数查询
-- WebSocket 实时消息、加入/离开事件、typing 事件
-- Postgres 持久化聊天记录
-- Prometheus 指标暴露，方便教学演示监控
+## ✨ 功能特性
 
-更详细的架构说明请参考：
+- 🔐 用户注册与登录（JWT + Refresh Token）
+- 💬 实时聊天消息（WebSocket）
+- 🏠 多房间支持
+- 👥 在线用户显示
+- ⌨️ 正在输入提示
+- 📜 历史消息分页加载
+- 📊 Prometheus 指标监控
+- 🐳 Docker 一键部署
 
-- `docs/DESIGN.md`：系统设计与关键流程
-- `PROJECT_ROADMAP.md`：路线图与迭代规划
-- `AGENTS.md`：协作与开发约定
+## 🛠 技术栈
 
-## 技术栈
+| 组件 | 技术 |
+|------|------|
+| 后端 | Go 1.24, Gin, GORM, gorilla/websocket |
+| 前端 | React 19, TypeScript, Vite |
+| 数据库 | PostgreSQL 16 |
+| 日志 | Zerolog |
+| 监控 | Prometheus, Grafana |
+| 容器 | Docker, Kubernetes |
 
-- Go 1.21
-- Gin（HTTP API 与静态资源托管）
-- GORM（数据库访问）
-- Zerolog（结构化日志）
-- Postgres（通过 Docker Compose 运行）
-- 原生 JavaScript 前端 + WebSocket
+## 🚀 快速开始
 
-## 目录结构
+### 前置要求
 
-- `cmd/server/`：程序入口，完成配置加载、日志初始化、数据库连接和 Router 构建
-- `internal/config/`：解析环境变量，集中管理 `APP_PORT`、`DATABASE_DSN`、`JWT_SECRET` 等配置
-- `internal/server/`：Gin Router 与 REST 处理器（注册/登录、房间 CRUD、消息分页等）
-- `internal/auth/`：JWT 与刷新令牌逻辑，并封装 Gin 中间件
-- `internal/ws/`：Hub/Client 抽象，处理房间内广播、心跳和 typing 事件
-- `internal/mw/`：通用中间件（如限流）
-- `internal/metrics/`：Prometheus 指标封装
-- `internal/log/`：Zerolog 日志封装
-- `web/`：静态页面和前端逻辑，由 Gin 的 `Static` 中间件托管
-- `scripts/`：开发辅助脚本（例如一键启动开发环境）
+- Go 1.24+
+- Node.js 20+
+- Docker & Docker Compose
 
-## 快速开始
-
-### 环境准备
-
-- Go 1.21 或以上
-- Docker 与 Docker Compose
-
-### 方式一：脚本一键启动（推荐）
-
-在项目根目录执行：
+### 方式一：Docker Compose（推荐）
 
 ```bash
-scripts/dev.sh
+# 克隆仓库
+git clone https://github.com/your-username/chatroom.git
+cd chatroom
+
+# 启动所有服务
+docker compose up -d
+
+# 访问应用
+open http://localhost:8080
 ```
 
-脚本会：
-
-- 使用 `docker-compose.yml` 启动/复用 Postgres
-- 执行健康检查
-- 启动 Go 服务（`Ctrl + C` 结束）
-
-### 方式二：手动启动
-
-1. 启动数据库（确保当前目录为项目根目录）：
-
-   ```bash
-   docker compose up -d postgres
-   ```
-
-2. 启动后端服务：
-
-   ```bash
-   go run ./cmd/server
-   ```
-
-3. 在浏览器中访问：
-
-   - 前端页面：`http://localhost:8080/`
-   - REST API 前缀：`/api/v1`
-   - WebSocket 示例：`ws://localhost:8080/ws?room_id=<id>&token=<jwt>`
-
-### 常用环境变量
-
-所有配置集中在 `internal/config`：
-
-- `APP_PORT`：HTTP 监听端口（默认例如 `8080`）
-- `DATABASE_DSN`：Postgres 连接串
-- `JWT_SECRET`：JWT 密钥（请勿提交到仓库）
-- `APP_ENV`：运行环境标识（如 `dev`、`prod`）
-- `ACCESS_TOKEN_TTL_MINUTES`：访问令牌有效期（分钟）
-- `REFRESH_TOKEN_TTL_DAYS`：刷新令牌有效期（天）
-
-在开发环境中可以直接通过 shell 导出或写入本地未提交的 `.env` 文件（配合相关工具）来管理这些变量。
-
-## 开发与测试
-
-常用命令：
+### 方式二：本地开发
 
 ```bash
-# 启动 Postgres（仅数据库）
+# 启动数据库
 docker compose up -d postgres
 
-# 构建服务
-go build ./cmd/server
+# 启动后端
+go run ./cmd/server
 
-# 运行全部测试
-go test ./...
-
-# 带 race detector 和覆盖率
-go test ./... -race -cover
+# 启动前端（另一个终端）
+cd frontend && npm install && npm run dev
 ```
 
-建议在修改数据库访问或 WebSocket 逻辑后，优先为对应包添加/更新 `_test.go` 并执行 `go test ./...`。
+### 方式三：开发脚本
 
-## 后续扩展
+```bash
+./scripts/dev.sh
+```
 
-关于消息富文本、房间权限控制、水平扩展和 WebSocket 自动化测试等进一步改进方向，请参考 `docs/DESIGN.md` 中的“后续扩展建议”部分。
+## 📁 项目结构
+
+```
+chatroom/
+├── cmd/server/          # 程序入口
+├── internal/
+│   ├── auth/            # JWT 认证
+│   ├── config/          # 配置管理
+│   ├── db/              # 数据库连接
+│   ├── models/          # 数据模型
+│   ├── mw/              # HTTP 中间件
+│   ├── server/          # HTTP 路由
+│   ├── ws/              # WebSocket 处理
+│   ├── metrics/         # Prometheus 指标
+│   └── log/             # 日志配置
+├── frontend/            # React 前端
+├── web/                 # 静态前端（备用）
+├── deploy/
+│   ├── docker/          # Dockerfile
+│   └── k8s/             # Kubernetes 清单
+├── docs/                # 文档
+└── scripts/             # 开发脚本
+```
+
+## 🔧 配置
+
+通过环境变量配置，参考 [.env.example](.env.example)：
+
+| 变量 | 默认值 | 描述 |
+|------|--------|------|
+| `APP_PORT` | 8080 | HTTP 端口 |
+| `APP_ENV` | dev | 环境：dev/test/prod |
+| `DATABASE_DSN` | - | PostgreSQL 连接串 |
+| `JWT_SECRET` | - | JWT 签名密钥 |
+| `ACCESS_TOKEN_TTL_MINUTES` | 15 | 访问令牌有效期 |
+| `REFRESH_TOKEN_TTL_DAYS` | 7 | 刷新令牌有效期 |
+
+## 📖 文档
+
+- [API 文档](docs/API.md)
+- [架构设计](docs/ARCHITECTURE.md)
+- [系统设计](docs/DESIGN.md)
+- [监控指南](docs/monitoring/README.md)
+
+## 🧪 开发
+
+```bash
+# 安装开发工具
+make tools
+
+# 运行测试
+make test
+
+# 代码检查
+make lint
+
+# 格式化代码
+make fmt
+
+# 构建
+make build
+```
+
+## 🐳 Docker
+
+```bash
+# 构建镜像
+make docker-build
+
+# 运行完整栈
+docker compose up -d
+
+# 包含监控
+docker compose --profile monitoring up -d
+```
+
+## ☸️ Kubernetes
+
+```bash
+# 部署到 Kubernetes
+kubectl apply -f deploy/k8s/
+```
+
+## 🤝 贡献
+
+欢迎贡献！请阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 了解如何参与。
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件。
+
+## 🔗 相关链接
+
+- [项目路线图](PROJECT_ROADMAP.md)
+- [变更日志](CHANGELOG.md)
+- [安全策略](SECURITY.md)
