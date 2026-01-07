@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -23,6 +24,14 @@ import (
 	"gorm.io/gorm"
 )
 
+// Version information, set via ldflags
+var (
+	Version   = "dev"
+	GitCommit = "unknown"
+	BuildTime = "unknown"
+	GoVersion = runtime.Version()
+)
+
 // SetupRouter 统一初始化 Gin 中间件、REST API 以及 WebSocket 端点。
 func SetupRouter(cfg config.Config, db *gorm.DB, hub *ws.Hub) *gin.Engine {
 	r := gin.New()
@@ -31,7 +40,53 @@ func SetupRouter(cfg config.Config, db *gorm.DB, hub *ws.Hub) *gin.Engine {
 	// 控制单个 IP+路由的速率，避免教学环境被刷爆。
 	r.Use(mw.RateLimit(rate.Every(time.Second/20), 40))
 
+	// Health check endpoints
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "ok",
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		})
+	})
 	r.GET("/healthz", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
+
+	r.GET("/ready", func(c *gin.Context) {
+		checks := make(map[string]string)
+
+		// Database health check
+		sqlDB, err := db.DB()
+		if err != nil {
+			checks["database"] = "unhealthy"
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status": "not_ready",
+				"checks": checks,
+			})
+			return
+		}
+		if err := sqlDB.Ping(); err != nil {
+			checks["database"] = "unhealthy"
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status": "not_ready",
+				"checks": checks,
+			})
+			return
+		}
+		checks["database"] = "healthy"
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "ready",
+			"checks": checks,
+		})
+	})
+
+	r.GET("/version", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"version":    Version,
+			"git_commit": GitCommit,
+			"build_time": BuildTime,
+			"go_version": GoVersion,
+		})
+	})
+
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	api := r.Group("/api/v1")

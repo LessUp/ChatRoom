@@ -8,12 +8,12 @@ import (
 
 // Config 描述启动服务所需的关键参数。
 type Config struct {
-	Port                    string
-	DatabaseDSN             string
-	JWTSecret               string
-	Env                     string
-	AccessTokenTTLMinutes   int
-	RefreshTokenTTLDays     int
+	Port                  string
+	DatabaseDSN           string
+	JWTSecret             string
+	Env                   string
+	AccessTokenTTLMinutes int
+	RefreshTokenTTLDays   int
 }
 
 func getenv(key, def string) string {
