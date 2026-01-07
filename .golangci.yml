@@ -1,0 +1,88 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+    - misspell
+    - gosec
+    - bodyclose
+    - durationcheck
+    - errorlint
+    - exportloopref
+    - gocritic
+    - nilerr
+    - prealloc
+    - unconvert
+    - unparam
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment
+  
+  gofmt:
+    simplify: true
+  
+  goimports:
+    local-prefixes: chatroom
+  
+  misspell:
+    locale: US
+  
+  gosec:
+    excludes:
+      - G104 # Audit errors not checked
+    config:
+      G306: "0644"
+  
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+    disabled-checks:
+      - hugeParam
+      - rangeValCopy
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gosec
+        - gocritic
+    
+    - path: cmd/
+      linters:
+        - gocritic
+    
+    - linters:
+        - staticcheck
+      text: "SA9003:"
+    
+    - linters:
+        - govet
+      text: "shadow:"
+
+  max-issues-per-linter: 50
+  max-same-issues: 10
+
+output:
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
