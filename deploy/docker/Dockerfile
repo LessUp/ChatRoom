@@ -24,7 +24,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     -o /chatroom ./cmd/server
 
 # Runtime stage
-FROM alpine:3.19
+FROM alpine:3.23
 
 # Install runtime dependencies
 RUN apk --no-cache add ca-certificates tzdata
