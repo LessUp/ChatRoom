@@ -167,73 +167,50 @@ func (c *Client) readPump() {
 			}
 
 		case "message":
-			if in.Content == "" {
-				continue
-			}
-			// 消息长度限制
-			if len(in.Content) > 2000 {
-				errMsg := map[string]string{"type": "error", "content": "消息长度不能超过2000字符"}
-				if b, err := json.Marshal(errMsg); err == nil {
-					select {
-					case c.send <- b:
-					default:
-					}
-				}
-				continue
-			}
-			msg := models.Message{RoomID: c.room.roomID, UserID: c.userID, Content: in.Content}
-			if err := c.db.Create(&msg).Error; err != nil {
-				log.Error().Err(err).Uint("room_id", c.room.roomID).Uint("user_id", c.userID).Msg("ws persist message")
-				errMsg := map[string]string{"type": "error", "content": "消息发送失败"}
-				if b, err := json.Marshal(errMsg); err == nil {
-					select {
-					case c.send <- b:
-					default:
-					}
-				}
-				continue
-			}
-			out := OutboundMessage{Type: "message", ID: msg.ID, RoomID: msg.RoomID, UserID: msg.UserID, Username: c.uname, Content: msg.Content, CreatedAt: msg.CreatedAt}
-			b, _ := json.Marshal(out)
-			metrics.WsMessagesTotal.Inc()
-			c.room.broadcast <- b
+			c.handleMessage(in.Content)
 
 		default:
 			// 向后兼容：无type时当作message处理
-			if in.Content == "" {
-				continue
-			}
-			if len(in.Content) > 2000 {
-				errMsg := map[string]string{"type": "error", "content": "消息长度不能超过2000字符"}
-				if b, err := json.Marshal(errMsg); err == nil {
-					select {
-					case c.send <- b:
-					default:
-					}
-				}
-				continue
-			}
-			msg := models.Message{RoomID: c.room.roomID, UserID: c.userID, Content: in.Content}
-			if err := c.db.Create(&msg).Error; err != nil {
-				log.Error().Err(err).Uint("room_id", c.room.roomID).Uint("user_id", c.userID).Msg("ws persist message")
-				errMsg := map[string]string{"type": "error", "content": "消息发送失败"}
-				if b, err := json.Marshal(errMsg); err == nil {
-					select {
-					case c.send <- b:
-					default:
-					}
-				}
-				continue
-			}
-			out := OutboundMessage{Type: "message", ID: msg.ID, RoomID: msg.RoomID, UserID: msg.UserID, Username: c.uname, Content: msg.Content, CreatedAt: msg.CreatedAt}
-			b, _ := json.Marshal(out)
-			metrics.WsMessagesTotal.Inc()
-			c.room.broadcast <- b
+			c.handleMessage(in.Content)
 		}
 	}
 }
 
+// handleMessage 校验并持久化聊天消息，然后广播给房间内的所有客户端。
+func (c *Client) handleMessage(content string) {
+	if content == "" {
+		return
+	}
+	if len(content) > 2000 {
+		errMsg := map[string]string{"type": "error", "content": "消息长度不能超过2000字符"}
+		if b, err := json.Marshal(errMsg); err == nil {
+			select {
+			case c.send <- b:
+			default:
+			}
+		}
+		return
+	}
+	msg := models.Message{RoomID: c.room.roomID, UserID: c.userID, Content: content}
+	if err := c.db.Create(&msg).Error; err != nil {
+		log.Error().Err(err).Uint("room_id", c.room.roomID).Uint("user_id", c.userID).Msg("ws persist message")
+		errMsg := map[string]string{"type": "error", "content": "消息发送失败"}
+		if b, err := json.Marshal(errMsg); err == nil {
+			select {
+			case c.send <- b:
+			default:
+			}
+		}
+		return
+	}
+	out := OutboundMessage{Type: "message", ID: msg.ID, RoomID: msg.RoomID, UserID: msg.UserID, Username: c.uname, Content: msg.Content, CreatedAt: msg.CreatedAt}
+	b, _ := json.Marshal(out)
+	metrics.WsMessagesTotal.Inc()
+	c.room.broadcast <- b
+}
+
 // writePump 周期性发送服务端数据与心跳，防止浏览器断线。
+// 每次写入时会批量排空 send channel 中的待发消息，减少系统调用次数。
 func (c *Client) writePump() {
 	ticker := time.NewTicker(30 * time.Second)
 	defer func() {
@@ -254,6 +231,19 @@ func (c *Client) writePump() {
 			}
 			_, _ = w.Write(message)
 			_ = w.Close()
+
+			// 批量排空 channel 中积压的消息，每条单独帧发送以保证客户端逐条解析。
+			n := len(c.send)
+			for i := 0; i < n; i++ {
+				msg, ok := <-c.send
+				if !ok {
+					return
+				}
+				c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+				if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+					return
+				}
+			}
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {

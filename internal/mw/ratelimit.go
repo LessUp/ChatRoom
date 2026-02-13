@@ -20,10 +20,11 @@ type RL struct {
 	r    rate.Limit
 	b    int
 	ttl  time.Duration
+	stop chan struct{}
 }
 
 func NewRateLimiter(r rate.Limit, burst int, ttl time.Duration) *RL {
-	return &RL{m: make(map[string]*keyLimiter), r: r, b: burst, ttl: ttl}
+	return &RL{m: make(map[string]*keyLimiter), r: r, b: burst, ttl: ttl, stop: make(chan struct{})}
 }
 
 func (rl *RL) get(key string) *rate.Limiter {
@@ -40,16 +41,31 @@ func (rl *RL) get(key string) *rate.Limiter {
 }
 
 func (rl *RL) gc() {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
 	for {
-		time.Sleep(30 * time.Second)
-		now := time.Now()
-		rl.mu.Lock()
-		for k, v := range rl.m {
-			if now.Sub(v.ts) > rl.ttl {
-				delete(rl.m, k)
+		select {
+		case <-rl.stop:
+			return
+		case <-ticker.C:
+			now := time.Now()
+			rl.mu.Lock()
+			for k, v := range rl.m {
+				if now.Sub(v.ts) > rl.ttl {
+					delete(rl.m, k)
+				}
 			}
+			rl.mu.Unlock()
 		}
-		rl.mu.Unlock()
+	}
+}
+
+// Stop 停止 GC goroutine，用于优雅停服。
+func (rl *RL) Stop() {
+	select {
+	case <-rl.stop:
+	default:
+		close(rl.stop)
 	}
 }
 
