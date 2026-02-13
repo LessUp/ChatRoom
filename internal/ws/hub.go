@@ -46,12 +46,23 @@ func (h *Hub) Online(roomID uint) int {
 	return room.Online()
 }
 
+// Shutdown 关闭所有 RoomHub goroutine，用于优雅停服。
+func (h *Hub) Shutdown() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for id, room := range h.rooms {
+		room.Stop()
+		delete(h.rooms, id)
+	}
+}
+
 type RoomHub struct {
 	roomID     uint
 	clients    map[*Client]bool
 	register   chan *Client
 	unregister chan *Client
 	broadcast  chan []byte
+	stop       chan struct{}
 	online     int32
 }
 
@@ -62,12 +73,21 @@ func NewRoomHub(roomID uint) *RoomHub {
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		broadcast:  make(chan []byte, 256),
+		stop:       make(chan struct{}),
 	}
 }
 
 func (rh *RoomHub) run() {
 	for {
 		select {
+		case <-rh.stop:
+			// 关闭所有客户端连接
+			for c := range rh.clients {
+				close(c.send)
+				delete(rh.clients, c)
+			}
+			atomic.StoreInt32(&rh.online, 0)
+			return
 		case c := <-rh.register:
 			rh.clients[c] = true
 			atomic.StoreInt32(&rh.online, int32(len(rh.clients)))
@@ -112,6 +132,16 @@ func (rh *RoomHub) run() {
 				}
 			}
 		}
+	}
+}
+
+// Stop 停止 RoomHub 的 run goroutine。
+func (rh *RoomHub) Stop() {
+	select {
+	case <-rh.stop:
+		// 已停止
+	default:
+		close(rh.stop)
 	}
 }
 
