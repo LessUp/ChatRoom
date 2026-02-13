@@ -126,8 +126,12 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 	}
 	room, err := h.roomSvc.Create(req.Name, auth.GetUserID(c))
 	if err != nil {
+		if errors.Is(err, service.ErrRoomNameTaken) {
+			c.JSON(http.StatusConflict, gin.H{"error": "room name taken"})
+			return
+		}
 		log.Error().Err(err).Uint("owner_id", auth.GetUserID(c)).Str("name", req.Name).Msg("create room")
-		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to create room"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create room"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"id": room.ID, "name": room.Name, "room": gin.H{"id": room.ID, "name": room.Name}})

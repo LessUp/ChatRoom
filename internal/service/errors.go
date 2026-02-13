@@ -7,4 +7,5 @@ var (
 	ErrUsernameTaken      = errors.New("username taken")
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrRoomNotFound       = errors.New("room not found")
+	ErrRoomNameTaken      = errors.New("room name taken")
 )

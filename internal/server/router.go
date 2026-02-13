@@ -37,6 +37,7 @@ func SetupRouter(cfg config.Config, db *gorm.DB, hub *ws.Hub) *gin.Engine {
 
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.Use(mw.CORS(cfg.Env))
 	r.Use(metrics.GinMiddleware())
 	// 控制单个 IP+路由的速率，避免教学环境被刷爆。
 	r.Use(mw.RateLimit(rate.Every(time.Second/20), 40))

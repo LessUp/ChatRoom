@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 
 import type { MessageDTO, User, WsEvent } from '../types'
 
@@ -70,10 +70,39 @@ interface MessageListProps {
 
 export function MessageList({ items, user, currentRoomId, onLoadMore }: MessageListProps) {
   const boxRef = useRef<HTMLDivElement | null>(null)
+  const prevScrollHeightRef = useRef<number>(0)
+  const prevItemCountRef = useRef<number>(0)
+
+  // 记录渲染前的 scrollHeight，用于判断是否为加载旧消息
+  useLayoutEffect(() => {
+    if (boxRef.current) {
+      prevScrollHeightRef.current = boxRef.current.scrollHeight
+    }
+  })
 
   useEffect(() => {
-    if (!boxRef.current) return
-    boxRef.current.scrollTop = boxRef.current.scrollHeight
+    const box = boxRef.current
+    if (!box) return
+    const prevCount = prevItemCountRef.current
+    prevItemCountRef.current = items.length
+
+    if (prevCount === 0) {
+      // 首次加载或切换房间，滚动到底部
+      box.scrollTop = box.scrollHeight
+      return
+    }
+
+    const addedToTop = items.length > prevCount && prevScrollHeightRef.current > 0
+    const wasNearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80
+
+    if (addedToTop && !wasNearBottom) {
+      // 加载旧消息：保持当前视口位置
+      const delta = box.scrollHeight - prevScrollHeightRef.current
+      box.scrollTop += delta
+    } else {
+      // 新消息到达且用户在底部附近，自动滚动
+      box.scrollTop = box.scrollHeight
+    }
   }, [items, currentRoomId])
 
   return (

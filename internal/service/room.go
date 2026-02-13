@@ -24,8 +24,15 @@ type RoomDTO struct {
 	Online int    `json:"online"`
 }
 
-// Create 创建新房间。
+// Create 创建新房间，房间名不可重复。
 func (s *RoomService) Create(name string, ownerID uint) (*RoomDTO, error) {
+	var count int64
+	if err := s.db.Model(&models.Room{}).Where("name = ?", name).Count(&count).Error; err != nil {
+		return nil, err
+	}
+	if count > 0 {
+		return nil, ErrRoomNameTaken
+	}
 	room := models.Room{Name: name, OwnerID: ownerID}
 	if err := s.db.Create(&room).Error; err != nil {
 		return nil, err

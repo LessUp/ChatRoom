@@ -20,7 +20,7 @@ type Room struct {
 
 type Message struct {
 	ID        uint      `gorm:"primaryKey"`
-	RoomID    uint      `gorm:"index;not null"`
+	RoomID    uint      `gorm:"index:idx_msg_room_id;not null"`
 	UserID    uint      `gorm:"index;not null"`
 	Content   string    `gorm:"type:text;not null"`
 	CreatedAt time.Time

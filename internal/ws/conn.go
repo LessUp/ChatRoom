@@ -11,8 +11,9 @@ import (
 
 	"chatroom/internal/auth"
 	"chatroom/internal/config"
-	"chatroom/internal/models"
 	"chatroom/internal/metrics"
+	"chatroom/internal/models"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
